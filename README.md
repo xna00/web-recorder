@@ -14,7 +14,7 @@
 
 ## 用法
 
-直接用桌面端浏览器（推荐 Chrome / Edge）打开 `screen-recorder.html` 即可。
+直接用桌面端浏览器（推荐 Chrome / Edge）打开 `index.html` 即可。
 
 ## 跨平台音频说明（重要）
 
@@ -37,7 +37,7 @@
 ## 在线地址
 
 - 自建域名：<https://rec.xna00.top>
-- Cloudflare Pages：<https://screen-recorder-2vu.pages.dev>
+- Cloudflare Pages：<https://web-recorder.pages.dev>
 
 ## 许可
 

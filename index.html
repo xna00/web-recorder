@@ -68,6 +68,7 @@
     padding: 10px 14px; border-radius: 10px;
   }
   .quality-wrap label { font-size: 13px; color: var(--muted); }
+  .q-desc { font-size: 11px; color: var(--muted); }
   select {
     background: #0b0d13; color: var(--text); border: 1px solid var(--border);
     border-radius: 8px; padding: 7px 10px; font-size: 13px; font-family: inherit; cursor: pointer;
@@ -164,13 +165,17 @@
           <option value="tl">左上</option>
         </select>
       </div>
+    </div>
+
+    <div class="row2">
       <div class="quality-wrap">
-        <label for="optQuality">画质</label>
+        <label for="optQuality">录制清晰度</label>
         <select id="optQuality">
           <option value="high" selected>高画质</option>
           <option value="standard">标准</option>
           <option value="economy">省空间</option>
         </select>
+        <span class="q-desc">指整段录像的清晰度（含屏幕），非摄像头</span>
       </div>
     </div>
 

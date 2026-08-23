@@ -346,7 +346,7 @@
     }
     try {
       log("请求屏幕捕获权限…");
-      stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 }, audio: optSys.checked });
+      stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 60 }, audio: optSys.checked });
     } catch (e) {
       log("❌ 用户取消或授权失败：" + e.name);
       return;

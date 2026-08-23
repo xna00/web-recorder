@@ -190,7 +190,7 @@
       • 点击「开始录制」后，浏览器会弹出<strong>系统级选屏框</strong>，选择「整个屏幕 / 应用窗口 / 浏览器标签页」并确认。<br>
       • 开启摄像头时，浏览器会再请求一次摄像头权限（画中画合成在本地完成，不上传）。<br>
       • 录制中可在浏览器地址栏附近的浮条点「停止共享」结束；本工具也会自动收尾。<br>
-      • 输出格式由浏览器决定：Chrome/Edge/Firefox 多为 <code>WebM</code>，Safari 多为 <code>MP4</code>。<br>
+      • 优先输出 <code>MP4</code>（Chrome/Edge/Safari 支持）；不支持的浏览器（如 Firefox）自动回退 <code>WebM</code>。<br>
       • 如选屏框中取消了授权，录制不会开始（属正常行为）。<br>
       • <b>系统声音说明：</b>选屏框里要勾选「共享音频 / Share audio」才会录到声音；录<b>单个应用窗口</b>时多数浏览器不提供音频；<b>macOS</b> 的浏览器不支持网页捕获系统音频，只能用「混入麦克风」录人声。
     </div>
@@ -228,16 +228,16 @@
   function hideWarn() { warnBox.classList.remove("show"); warnBox.innerHTML = ""; }
 
   function pickMime() {
+    // 优先 MP4（Chrome/Edge 130+ / Safari 支持），不支持时回退 WebM（如 Firefox）
     const cands = [
+      "video/mp4;codecs=h264,aac",
+      "video/mp4",
       "video/webm;codecs=vp9,opus",
       "video/webm;codecs=vp8,opus",
-      "video/webm",
-      "video/mp4;codecs=h264,aac",
-      "video/mp4"
+      "video/webm"
     ];
     if (typeof MediaRecorder === "undefined") return "";
     for (const c of cands) {
-      if (c.startsWith("video/mp4") && !MediaRecorder.isTypeSupported(c)) continue;
       if (MediaRecorder.isTypeSupported(c)) return c;
     }
     return "";
@@ -419,13 +419,9 @@
     const recStream = new MediaStream([...videoTracks, ...audioTracks]);
 
     const mime = pickMime();
-    blobMime = mime || "video/webm";
-    if (mime) {
-      try { recorder = new MediaRecorder(recStream, { mimeType: mime }); }
-      catch (e) { recorder = new MediaRecorder(recStream); }
-    } else {
-      recorder = new MediaRecorder(recStream);
-    }
+    try { recorder = mime ? new MediaRecorder(recStream, { mimeType: mime }) : new MediaRecorder(recStream); }
+    catch (e) { recorder = new MediaRecorder(recStream); }
+    blobMime = recorder.mimeType || mime || "video/webm";
     log("录制格式：" + blobMime);
 
     chunks = [];

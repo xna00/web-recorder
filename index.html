@@ -62,6 +62,12 @@
   }
   .pos-wrap.show { display: flex; }
   .pos-wrap label { font-size: 13px; color: var(--muted); }
+  .quality-wrap {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--panel-2); border: 1px solid var(--border);
+    padding: 10px 14px; border-radius: 10px;
+  }
+  .quality-wrap label { font-size: 13px; color: var(--muted); }
   select {
     background: #0b0d13; color: var(--text); border: 1px solid var(--border);
     border-radius: 8px; padding: 7px 10px; font-size: 13px; font-family: inherit; cursor: pointer;
@@ -158,6 +164,14 @@
           <option value="tl">左上</option>
         </select>
       </div>
+      <div class="quality-wrap">
+        <label for="optQuality">画质</label>
+        <select id="optQuality">
+          <option value="high" selected>高画质</option>
+          <option value="standard">标准</option>
+          <option value="economy">省空间</option>
+        </select>
+      </div>
     </div>
 
     <div class="controls">
@@ -191,6 +205,7 @@
       • 开启摄像头时，浏览器会再请求一次摄像头权限（画中画合成在本地完成，不上传）。<br>
       • 录制中可在浏览器地址栏附近的浮条点「停止共享」结束；本工具也会自动收尾。<br>
       • 优先输出 <code>MP4</code>（Chrome/Edge/Safari 支持）；不支持的浏览器（如 Firefox）自动回退 <code>WebM</code>。<br>
+      • <b>画质</b>：按录制分辨率自适应视频码率，「高画质」更清晰但文件更大，「省空间」反之；模糊发虚通常是码率不足，选「高画质」即可。<br>
       • 如选屏框中取消了授权，录制不会开始（属正常行为）。<br>
       • <b>系统声音说明：</b>选屏框里要勾选「共享音频 / Share audio」才会录到声音；录<b>单个应用窗口</b>时多数浏览器不提供音频；<b>macOS</b> 的浏览器不支持网页捕获系统音频，只能用「混入麦克风」录人声。
     </div>
@@ -208,6 +223,7 @@
   const logBox = el("log"), liveBadge = el("liveBadge"), warnBox = el("warnBox");
   const optSys = el("optSystemAudio"), optMic = el("optMic");
   const optCamera = el("optCamera"), posWrap = el("posWrap"), optPos = el("optPos");
+  const optQuality = el("optQuality");
 
   let recorder = null, chunks = [], stream = null, camStream = null, audioCtx = null;
   let startTime = 0, elapsedBeforePause = 0, tickTimer = null;
@@ -338,6 +354,15 @@
     }
   }
 
+  // 按源分辨率 + 画质档位自适应视频码率，避免浏览器默认码率过低导致画面发虚
+  const QUALITY_LABEL = { high: "高画质", standard: "标准", economy: "省空间" };
+  function computeBitrate(w, h, q) {
+    const mp = (w * h) / 1e6;                                   // 百万像素
+    const perMP = q === "high" ? 4.5e6 : q === "economy" ? 1.4e6 : 2.8e6; // 每百万像素码率
+    const bps = mp * perMP;
+    return Math.min(40e6, Math.max(2e6, Math.round(bps)));       // 下限 2M，上限 40M
+  }
+
   async function start() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
       log("❌ 当前浏览器不支持 getDisplayMedia（请使用桌面端 Chrome/Edge/Firefox/Safari）。");
@@ -371,7 +396,7 @@
     // 摄像头
     if (optCamera.checked) {
       try {
-        camStream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
+        camStream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
         canvas = document.createElement("canvas");
         ctx = canvas.getContext("2d");
         screenVid = document.createElement("video");
@@ -419,10 +444,17 @@
     const recStream = new MediaStream([...videoTracks, ...audioTracks]);
 
     const mime = pickMime();
-    try { recorder = mime ? new MediaRecorder(recStream, { mimeType: mime }) : new MediaRecorder(recStream); }
+    // 按源分辨率 + 画质档位自适应视频码率
+    const srcTrack = stream.getVideoTracks()[0];
+    const vs = (srcTrack && srcTrack.getSettings) ? srcTrack.getSettings() : {};
+    const vw = vs.width || 1920, vh = vs.height || 1080;
+    const bitrate = computeBitrate(vw, vh, optQuality.value);
+    const recOpts = { videoBitsPerSecond: bitrate };
+    if (mime) recOpts.mimeType = mime;
+    try { recorder = new MediaRecorder(recStream, recOpts); }
     catch (e) { recorder = new MediaRecorder(recStream); }
     blobMime = recorder.mimeType || mime || "video/webm";
-    log("录制格式：" + blobMime);
+    log("录制格式：" + blobMime + " ｜ 码率：" + (Math.round(bitrate / 1e5) / 10) + " Mbps（" + QUALITY_LABEL[optQuality.value] + "）");
 
     chunks = [];
     recorder.ondataavailable = (ev) => { if (ev.data && ev.data.size) chunks.push(ev.data); };
